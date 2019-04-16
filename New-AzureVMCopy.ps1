@@ -139,6 +139,49 @@ function Set-AzureConnection
     $null = Set-AzureRmContext -Subscription $SubscriptionId -ErrorAction Stop
 }
 
+Function New-AzureVMClone {
+    [CmdletBinding()]
+    Param(
+        [Parameter(ValueFromPipeline=$true)]
+        [Object]$VMObject,
+        [Switch]$NewAvailabilitySet,
+        [Switch]$IncludeExtensions
+    )
+
+    BEGIN {
+        try {
+            If ($VMObject.GetType().ToString() -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine") {
+                $PSCmdlet.ThrowTerminatingError(
+                    [System.Management.Automation.ErrorRecord]::New(
+                        [System.SystemException]::New("The VMObject type is not supported or is not an Azure Virtual Machine"),
+                        "InvalidObjectType",
+                        [System.Management.Automation.ErrorCategory]::InvalidResult,
+                        $VMObject.GetType().ToString()
+                    )
+                )
+            }
+
+        }
+        catch {$PSCmdlet.ThrowTerminatingError($PSItem)}
+    }
+    PROCESS {
+        try {
+
+        }
+        catch {
+
+        }
+    }
+    END {
+        try {
+
+        }
+        catch {
+
+        }
+    }
+}
+
 Set-AzureConnection -SubscriptionId $SubscriptionId -AzureEnvironment 'AzureUSGovernment'
 
 # Set variables
