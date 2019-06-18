@@ -1,13 +1,16 @@
 Function New-AzureVMClone {
     [CmdletBinding()]
     Param(
-        [Parameter(ValueFromPipeline=$true)]
+        [Parameter(ValueFromPipeline=$true,ParameterSetName="Default",Position=0)]
         [Object]$VMObject,
         [Parameter(ParameterSetName="MigrateAvailabilitySet",Position=1)]
+        [Parameter(ParameterSetName="Default",Position=1)]
         [String]$AvailabilitySetName,
         [Parameter(ParameterSetName="MigrateAvailabilitySet",Position=2)]
+        [Parameter(ParameterSetName="Default",Position=2)]
         [Switch]$MigrateAvailabilitySet,
         [Parameter(ParameterSetName="ClearAvailabilitySet",Position=3)]
+        [Parameter(ParameterSetName="Default",Position=3)]
         [Switch]$ClearAvailabilitySet
     )
 
@@ -53,7 +56,7 @@ Function New-AzureVMClone {
                 )
             }
 
-            If ($MigrateAvailabilitySet -and [System.String]::IsNullOrEmpty($AVSetName)) {
+            If ($MigrateAvailabilitySet -and [System.String]::IsNullOrEmpty($AvailabilitySetName)) {
                 Write-Verbose ("AvailabilitySetName parameter is required when using -MigrateAvailabilitySet")
                 $PSCmdlet.ThrowTerminatingError(
                     [System.Management.Automation.ErrorRecord]::New(
@@ -69,9 +72,10 @@ Function New-AzureVMClone {
                 $AvailabilitySet = Get-AzAvailabilitySet -ResourceGroupName $VMObject.ResourceGroupName -Name $AvailabilitySetName
             }
             Else {
-                If ([System.String]::IsNullOrEmpty($VMObject.AvailabilitySetReference.Id)){Write-Verbose ("{0} is not part of an Availability Set")}
+                If ([System.String]::IsNullOrEmpty($VMObject.AvailabilitySetReference.Id)){Write-Verbose ("{0} is not part of an Availability Set" -f $VMObject.Name)}
                 Else {
-                    Write-Verbose ("{0} is associated with {1} Availability Set and keep its association")
+                    Write-Verbose ("{0} is associated with {1} Availability Set and keep its association" -f $VMObject.Name,$VMObject.AvailabilitySetReference.Id.Split("/")[-1])
+                    $AvailabilitySet = $VMObject.AvailabilitySetReference
                 }
             }
             
@@ -80,7 +84,10 @@ Function New-AzureVMClone {
 
             #Check OS from OSDisk and set OSDisk object
             Switch ($VMObject.StorageProfile.OsDisk.OsType) {
-                "Windows" {Set-AzVMOSDisk -VM $newVMConfig -Name $VMObject.StorageProfile.OsDisk.Name -Caching $VMObject.StorageProfile.OsDisk.Caching -CreateOption Attach -Windows -ManagedDiskId $VMObject.StorageProfile.OsDisk.ManagedDisk.Id}
+                "Windows" {
+                    Set-AzVMOSDisk -VM $newVMConfig -Name $VMObject.StorageProfile.OsDisk.Name -Caching $VMObject.StorageProfile.OsDisk.Caching -CreateOption Attach -Windows -ManagedDiskId $VMObject.StorageProfile.OsDisk.ManagedDisk.Id | Out-Null
+                    $newVMConfig.LicenseType = "Windows_Server"
+                }
                 "Linux" {Set-AzVMOSDisk -VM $newVMConfig -Name $VMObject.StorageProfile.OsDisk.Name -Caching $VMObject.StorageProfile.OsDisk.Caching -CreateOption Attach -Linux -ManagedDiskId $VMObject.StorageProfile.OsDisk.ManagedDisk.Id}
             }
 
@@ -99,10 +106,10 @@ Function New-AzureVMClone {
             #Add boot diagnostics
             If ($VMObject.DiagnosticsProfile.BootDiagnostics.Enabled -eq $true) {
                 $StorageAccount = $VMObject.DiagnosticsProfile.BootDiagnostics.StorageUri.Split(".")[0].SubString(8)
-                Set-AzVMBootDiagnostics -VM $newVMConfig -Enable -ResourceGroupName $VMObject.ResourceGroupName -StorageAccountName $StorageAccount
+                Set-AzVMBootDiagnostic -VM $newVMConfig -Enable -ResourceGroupName $VMObject.ResourceGroupName -StorageAccountName $StorageAccount
             }
             
-
+            Sleep 10
 
         }
         catch {$PSCmdlet.ThrowTerminatingError($PSItem)}
