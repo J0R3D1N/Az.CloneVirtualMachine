@@ -1,7 +1,7 @@
 # Clone Azure Virtual Machine (Az.CloneVirtualMachine)
 > #### WARNING: This is a destructive function, but is safe guarded with continuation prompts.
 ## Overview
-This module will install a function called *New-AzVMClone*.  The function will allow a user migrate to **OR** remove an Azure Virtual Machine from an Availability Set.  This process is mostly commonly used when Azure Virtual Machines are inadvertently placed into incorrect Availability Sets.  At the time, this code was developed Azure did not provide a way to remove a Virtual Machine from an Availability Set or could you move a Virtual Machine to a new Availability Set.
+This module will install a function called *New-AzVMClone*.  The function will allow a user migrate to **OR** remove an Azure Virtual Machine from an Availability Set.  This process is most commonly used when Azure Virtual Machines are inadvertently placed into incorrect Availability Sets.  This code was developed to fill a gap because Azure does not provide a way to remove a Virtual Machine from an Availability Set or move a Virtual Machine to a new Availability Set.
 
 ---
 
