@@ -228,7 +228,7 @@ Function New-AzVMClone {
                     Return
                 }
                 Else {
-                    Show-Menu -Title ("{0} is associated with {1} Availability Set and will be removed" -f $VMObject.Name,$VMObject.AvailabilitySetReference.Id.Split("/")[-1]) -DisplayOnly -Style Info -Color Cyan#Create Base VM Configuration object
+                    Show-Menu -Title ("{0} is associated with {1} Availability Set and will be removed" -f $VMObject.Name,$VMObject.AvailabilitySetReference.Id.Split("/")[-1]) -DisplayOnly -Style Info -Color Cyan
                     #Create Base VM Configuration object
                     $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false
                 }
