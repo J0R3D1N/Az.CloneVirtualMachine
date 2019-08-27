@@ -124,8 +124,14 @@ Function New-AzVMClone {
         Microsoft.Azure.Commands.Compute.Models.PSVirtualMachineList
     .OUTPUTS
         None.  This function does not provide an output, only on screen information
-
-    
+    #>
+    <#
+        CHANGE LOG
+        ---------------------------------------------------------------------------------
+        v1.2
+          - Primary production release
+        v1.3
+          - Fixed some string values that called a split method, but if the value was NULL, the method would error.  Changed to an operator.
     #>
     [CmdletBinding(DefaultParameterSetName="Default",SupportsShouldProcess,ConfirmImpact="High")]
     Param(
@@ -194,7 +200,8 @@ Function New-AzVMClone {
                 )
             }
             Else {Write-Verbose ("Virtual Machine object type verified ({0})" -f $VMObject.GetType().Name)}
-            $CurrentAvailabilitySetName = $VMObject.AvailabilitySetReference.Id.Split("/")[-1]
+            
+            $CurrentAvailabilitySetName = ($VMObject.AvailabilitySetReference.Id -Split "/")[-1]
             # Simple hashtable to show which components have been cloned
             $ConfigStatus = [Ordered]@{
                 VMName = $VMObject.Name
@@ -228,7 +235,7 @@ Function New-AzVMClone {
                     Return
                 }
                 Else {
-                    Show-Menu -Title ("{0} is associated with {1} Availability Set and will be removed" -f $VMObject.Name,$VMObject.AvailabilitySetReference.Id.Split("/")[-1]) -DisplayOnly -Style Info -Color Cyan
+                    Show-Menu -Title ("{0} is associated with {1} Availability Set and will be removed" -f $VMObject.Name,($VMObject.AvailabilitySetReference.Id -Split "/")[-1]) -DisplayOnly -Style Info -Color Cyan
                     #Create Base VM Configuration object
                     $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false
                 }
@@ -245,7 +252,7 @@ Function New-AzVMClone {
                     Else {Return}
                 }
                 Else {
-                    Show-Menu -Title ("{0} IS associated with {1} Availability Set (NO CHANGE)" -f $VMObject.Name,$VMObject.AvailabilitySetReference.Id.Split("/")[-1]) -DisplayOnly -Style Info -Color Magenta
+                    Show-Menu -Title ("{0} IS associated with {1} Availability Set (NO CHANGE)" -f $VMObject.Name,($VMObject.AvailabilitySetReference.Id -Split "/")[-1]) -DisplayOnly -Style Info -Color Magenta
                     If ($Force -or $PSCmdlet.ShouldProcess("$($VMObject.Name)","Clone the Virtual Machine 'AS IS'")) {
                         # Create Base VM Configuration object
                         $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $VMObject.AvailabilitySetReference.Id -Tags $VMObject.Tags -Debug:$false
@@ -294,7 +301,7 @@ Function New-AzVMClone {
 
             # Add boot diagnostics
             If ($VMObject.DiagnosticsProfile.BootDiagnostics.Enabled -eq $true) {
-                $StorageAccount = $VMObject.DiagnosticsProfile.BootDiagnostics.StorageUri.Split(".")[0].SubString(8)
+                $StorageAccount = ($VMObject.DiagnosticsProfile.BootDiagnostics.StorageUri -Split ".")[0].SubString(8)
                 Set-AzVMBootDiagnostic -VM $newVMConfig -Enable -ResourceGroupName $VMObject.ResourceGroupName -StorageAccountName $StorageAccount -Debug:$false | Out-Null
                 $ConfigStatus.BootDiagnostics = $true
             }
