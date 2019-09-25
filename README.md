@@ -21,9 +21,7 @@ This module will install a function called *New-AzVMClone*.  The function will a
 
 ---
 
-## Module Functions
-> ``Show-Menu`` : This is a function used to provide readable screen output
->
+## Module Functions>
 > ``New-AzVMClone`` : This is the primary function used to migrate **OR** remove a VM from an Availability Set
 
 ## Installation
