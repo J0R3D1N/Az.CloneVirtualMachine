@@ -85,7 +85,7 @@ Function New-AzVMClone {
           - Primary production release
         v1.3
           - Fixed some string values that called a split method, but if the value was NULL, the method would error.  Changed to an operator.
-        v1.3.1
+        v1.4
           - Fixed issue where grabbing the string from the StorageUri would incorrectly split the string
           - Moved the Show-Menu helper function inside the main function
     #>
