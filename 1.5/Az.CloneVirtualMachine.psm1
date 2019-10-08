@@ -298,6 +298,7 @@ Function New-AzVMClone {
                         # Create new VM Object with new size
                         $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -AvailabilitySetName $AvailabilitySet.Name
                         Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                        $ConfigStatus.Size = $VMSize
                         $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false
                     }
                     Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false}
@@ -319,6 +320,7 @@ Function New-AzVMClone {
                             $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -Location $VMObject.Location    
                             # Create new VM Object with new size
                             Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $ConfigStatus.Size = $VMSize
                             $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -Tags $VMObject.Tags -Debug:$false
                         }
                         Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false}
@@ -337,6 +339,7 @@ Function New-AzVMClone {
                             $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -Location $VMObject.Location    
                             # Create new VM Object with new size
                             Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $ConfigStatus.Size = $VMSize
                             $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -Tags $VMObject.Tags -Debug:$false
                         }
                         Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false}
@@ -350,6 +353,7 @@ Function New-AzVMClone {
                             # Create new VM Object with new size
                             $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -AvailabilitySetName $AvailabilitySet.Name
                             Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $ConfigStatus.Size = $VMSize
                             $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false
                         }
                         Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $VMObject.AvailabilitySetReference.Id -Tags $VMObject.Tags -Debug:$false}
@@ -419,11 +423,12 @@ Virtual Machine Clone Status
 -------------------------------
 Name:              $($ConfigStatus.VMName)
 OS:                $($ConfigStatus.OS)
-Size:              $($ConfigStatus.Size)
+Size:              $($ConfigStatus.Size) [Resize: $Resize]
 Availability Set:  $CurrentAvailabilitySetName --> $AvailabilitySetName
 OSDisk:            $($ConfigStatus.OSDisk)
 DataDisks:         $($ConfigStatus.DataDisks)
 Network:           $($ConfigStatus.Network)
+Plan:              $($ConfigStatus.Plan)
 Boot Diagnostics:  $($ConfigStatus.BootDiagnostics)
 Extensions:        $($ConfigStatus.Extensions)
 
