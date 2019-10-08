@@ -92,6 +92,8 @@ Function New-AzVMClone {
           - Added support for VM Resize during clone operation (new function Select-AzVMSize)
           - Added support for VM(s) that are using a Marketplace plan
           - Added feature where the VMObject is converted to JSON (in the same working directory) before it is deleted from Azure
+        v1.6
+          - Fix display output for Resize and plan properties cloning
     #>
     [CmdletBinding(DefaultParameterSetName="Default",SupportsShouldProcess,ConfirmImpact="High")]
     Param(
