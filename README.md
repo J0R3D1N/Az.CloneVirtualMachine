@@ -12,6 +12,9 @@ This module will install a function called *New-AzVMClone*.  The function will a
 - Added support for VM(s) that are using a Marketplace plan
 - Added feature where the VMObject is converted and saved to JSON (in the same working directory) before it is deleted from Azure
 
+### v1.6
+- Fix display output for Resize and plan properties cloning
+
 ---
 ### Configuration Components
 #### CLONED
