@@ -51,7 +51,7 @@ This Module requires that the correct Virtual Machine object type is passed thro
         
 #### Verify ObjectType
 
-![Figure10](1.5/Media/figure10_verify_object_type.png)
+![Figure10](1.6/Media/figure10_verify_object_type.png)
 
 ## Installation
 The preferred method of installation is to *install* the module from the PowerShell Gallery for the active user.
@@ -82,12 +82,12 @@ This module is maintained in the PowerShell Gallery and is updated to fix bugs o
 #### Determine what version is the latest release
 >``Find-Module -Name Az.CloneVirtualMachine -AllVersions``
 
-![Figure1](/1.5/Media/figure1_findmodule_allversions.png)
+![Figure1](/1.6/Media/figure1_findmodule_allversions.png)
 
 #### Verify what version is currently installed
 >``Get-Module -Name Az.CloneVirtualMachine -ListAvailable``
 
-![Figure2](/1.5/Media/figure2_getmodule_listavailable.png)
+![Figure2](/1.6/Media/figure2_getmodule_listavailable.png)
 
 #### Uninstall the module
 
@@ -95,7 +95,7 @@ This module is maintained in the PowerShell Gallery and is updated to fix bugs o
 >
 >``Uninstall-Module -Name Az.CloneVirtualMachine``
 
-![Figure3](/1.5/Media/figure3_uninstall_module.png)
+![Figure3](/1.6/Media/figure3_uninstall_module.png)
 
 #### Install the latest version
 
@@ -103,7 +103,7 @@ Installing the module only makes the module files available to be imported into 
 
 >``Install-Module -Name Az.CloneVirtualMachine -RequiredVersion 1.4 -Scope CurrentUser``
 
-![Figure4](1.5/Media/figure4_installmodule_requiredversion.png)
+![Figure4](1.6/Media/figure4_installmodule_requiredversion.png)
 
 #### Import the updated module to PowerShell
 
@@ -111,7 +111,7 @@ Using ``Import-Module`` will make the commands available from within the PowerSh
 
 >``Import-Module -Name Az.CloneVirtualMachine``
 
-![Figure5](1.5/Media/figure5_importmodule.png)
+![Figure5](1.6/Media/figure5_importmodule.png)
 
 ## Troubleshooting
 
@@ -121,7 +121,7 @@ The below items should fix most of the common issues found during installation, 
 
 Depending on your organization, you may have a more restrictive PowerShell Execution Policy.  
 
-![Figure6](1.5/Media/figure6_importmodule_EP_restricted.png)
+![Figure6](1.6/Media/figure6_importmodule_EP_restricted.png)
 
 It is recommended to set the PowerShell Execution Policy to ByPass temporarialy to be able to install the module.
 
@@ -129,13 +129,13 @@ It is recommended to set the PowerShell Execution Policy to ByPass temporarialy 
 >
 >``Set-ExecutionPolicy -ExecutionPolicy ByPass``
 
-![Figure7](1.5/Media/figure7_setexecutionpolicy_bypass.png)
+![Figure7](1.6/Media/figure7_setexecutionpolicy_bypass.png)
 
 #### Error: Invalid Azure Powershell module is installed (AzureRM)
 
 If the legacy AzureRM module is still part of your PowerShell session, the function will throw the below error.
 
-![Figure8](1.5/Media/figure8_error_invalid_module.png)
+![Figure8](1.6/Media/figure8_error_invalid_module.png)
 
 The AzureRM module must be uninstalled to prevent conflict
 
@@ -145,7 +145,7 @@ The AzureRM module must be uninstalled to prevent conflict
 
 Removing the module rather than **uninstalling** will produce the following **WARNING** and **ERROR**
 
-![Figure9](1.5/Media/figure9_error_azurerm_profile.png)
+![Figure9](1.6/Media/figure9_error_azurerm_profile.png)
 
 ## Getting Help
 The function has comment based help and will provide examples of how to use it.
