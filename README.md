@@ -6,16 +6,23 @@
 ## Overview
 This module will install a function called *New-AzVMClone*.  The function will allow a user migrate to **OR** remove an Azure Virtual Machine from an Availability Set.  This process is most commonly used when Azure Virtual Machines are inadvertently placed into incorrect Availability Sets.  This code was developed to fill a gap because Azure does not provide a way to remove a Virtual Machine from an Availability Set or move a Virtual Machine to a new Availability Set.
 
+## Updates
+### v1.5
+- Added support for VM Resize during clone operation (new function Select-AzVMSize)
+- Added support for VM(s) that are using a Marketplace plan
+- Added feature where the VMObject is converted and saved to JSON (in the same working directory) before it is deleted from Azure
+
 ---
 ### Configuration Components
 #### CLONED
 - VM Name
-- VM Size
+- VM Size **-or-** VM Re-Size
 - OS
 - Tags
 - OS Disks
 - Data Disks (*all*) 
 - Network Interfaces (*all*)
+- Marketplace Plan
 - Boot Diagnostics
 
 #### NOT CLONED
@@ -44,7 +51,7 @@ This Module requires that the correct Virtual Machine object type is passed thro
         
 #### Verify ObjectType
 
-![Figure10](1.4/Media/figure10_verify_object_type.png)
+![Figure10](1.5/Media/figure10_verify_object_type.png)
 
 ## Installation
 The preferred method of installation is to *install* the module from the PowerShell Gallery for the active user.
@@ -75,12 +82,12 @@ This module is maintained in the PowerShell Gallery and is updated to fix bugs o
 #### Determine what version is the latest release
 >``Find-Module -Name Az.CloneVirtualMachine -AllVersions``
 
-![Figure1](/1.4/Media/figure1_findmodule_allversions.png)
+![Figure1](/1.5/Media/figure1_findmodule_allversions.png)
 
 #### Verify what version is currently installed
 >``Get-Module -Name Az.CloneVirtualMachine -ListAvailable``
 
-![Figure2](/1.4/Media/figure2_getmodule_listavailable.png)
+![Figure2](/1.5/Media/figure2_getmodule_listavailable.png)
 
 #### Uninstall the module
 
@@ -88,7 +95,7 @@ This module is maintained in the PowerShell Gallery and is updated to fix bugs o
 >
 >``Uninstall-Module -Name Az.CloneVirtualMachine``
 
-![Figure3](/1.4/Media/figure3_uninstall_module.png)
+![Figure3](/1.5/Media/figure3_uninstall_module.png)
 
 #### Install the latest version
 
@@ -96,7 +103,7 @@ Installing the module only makes the module files available to be imported into 
 
 >``Install-Module -Name Az.CloneVirtualMachine -RequiredVersion 1.4 -Scope CurrentUser``
 
-![Figure4](1.4/Media/figure4_installmodule_requiredversion.png)
+![Figure4](1.5/Media/figure4_installmodule_requiredversion.png)
 
 #### Import the updated module to PowerShell
 
@@ -104,7 +111,7 @@ Using ``Import-Module`` will make the commands available from within the PowerSh
 
 >``Import-Module -Name Az.CloneVirtualMachine``
 
-![Figure5](1.4/Media/figure5_importmodule.png)
+![Figure5](1.5/Media/figure5_importmodule.png)
 
 ## Troubleshooting
 
@@ -114,7 +121,7 @@ The below items should fix most of the common issues found during installation, 
 
 Depending on your organization, you may have a more restrictive PowerShell Execution Policy.  
 
-![Figure6](1.4/Media/figure6_importmodule_EP_restricted.png)
+![Figure6](1.5/Media/figure6_importmodule_EP_restricted.png)
 
 It is recommended to set the PowerShell Execution Policy to ByPass temporarialy to be able to install the module.
 
@@ -122,13 +129,13 @@ It is recommended to set the PowerShell Execution Policy to ByPass temporarialy 
 >
 >``Set-ExecutionPolicy -ExecutionPolicy ByPass``
 
-![Figure7](1.4/Media/figure7_setexecutionpolicy_bypass.png)
+![Figure7](1.5/Media/figure7_setexecutionpolicy_bypass.png)
 
 #### Error: Invalid Azure Powershell module is installed (AzureRM)
 
 If the legacy AzureRM module is still part of your PowerShell session, the function will throw the below error.
 
-![Figure8](1.4/Media/figure8_error_invalid_module.png)
+![Figure8](1.5/Media/figure8_error_invalid_module.png)
 
 The AzureRM module must be uninstalled to prevent conflict
 
@@ -138,7 +145,7 @@ The AzureRM module must be uninstalled to prevent conflict
 
 Removing the module rather than **uninstalling** will produce the following **WARNING** and **ERROR**
 
-![Figure9](1.4/Media/figure9_error_azurerm_profile.png)
+![Figure9](1.5/Media/figure9_error_azurerm_profile.png)
 
 ## Getting Help
 The function has comment based help and will provide examples of how to use it.
