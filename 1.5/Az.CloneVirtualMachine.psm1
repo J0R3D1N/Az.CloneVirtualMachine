@@ -88,6 +88,10 @@ Function New-AzVMClone {
         v1.4
           - Fixed issue where grabbing the string from the StorageUri would incorrectly split the string
           - Moved the Show-Menu helper function inside the main function
+        v1.5
+          - Added support for VM Resize during clone operation (new function Select-AzVMSize)
+          - Added support for VM(s) that are using a Marketplace plan
+          - Added feature where the VMObject is converted to JSON (in the same working directory) before it is deleted from Azure
     #>
     [CmdletBinding(DefaultParameterSetName="Default",SupportsShouldProcess,ConfirmImpact="High")]
     Param(
@@ -100,12 +104,17 @@ Function New-AzVMClone {
         [String]$AvailabilitySetName,
 
         # Switch to enable Availability Set migration
-        [Parameter(Mandatory=$true,ParameterSetName="Migrate",Position=2)]
+        [Parameter(Mandatory=$true,ParameterSetName="Migrate",Position=0)]
         [Switch]$MigrateAvailabilitySet,
 
         # Switch to remove a VM from its current availability set after cloning
-        [Parameter(Mandatory=$true,ParameterSetName="Remove",Position=1)]
+        [Parameter(Mandatory=$true,ParameterSetName="Remove",Position=0)]
         [Switch]$RemoveAvailabilitySet,
+
+        # Switch to resize the VM to a new size
+        [Parameter(Mandatory=$false,ParameterSetName="Migrate",Position=2)]
+        [Parameter(Mandatory=$false,ParameterSetName="Remove",Position=1)]
+        [Switch]$Resize,
 
         #Switch parameter to bypass confirmation
         [Switch]$Force
@@ -114,7 +123,7 @@ Function New-AzVMClone {
     BEGIN {
         try {
             # Checks for legacy Azure RM PowerShell Module
-            If ((Get-Command Get-AzureRMContext -ErrorAction SilentlyContinue -Debug:$false)) {
+            If ((Get-InstalledModule -Name AzureRm -ErrorAction SilentlyContinue -Debug:$false)) {
                 Write-Verbose ("AzureRM Module installed, this cmdlet requires Az Module v1.5.0 from PSGallery")
                 $PSCmdlet.ThrowTerminatingError(
                     [System.Management.Automation.ErrorRecord]::New(
@@ -126,7 +135,7 @@ Function New-AzVMClone {
                 )
             }
             # Checks for current Azure PowerShell Module
-            ElseIf (-NOT (Get-Command Get-AzContext -ErrorAction SilentlyContinue -Debug:$false)) {
+            ElseIf (-NOT (Get-InstalledModule -Name Az -MinimumVersion 1.5 -ErrorAction SilentlyContinue -Debug:$false)) {
                 Write-Warning ("Missing valid Azure PowerShell Module - Please install v1.5.0 from PSGallery")
                 $PSCmdlet.ThrowTerminatingError(
                     [System.Management.Automation.ErrorRecord]::New(
@@ -184,8 +193,61 @@ Function New-AzVMClone {
                 [system.console]::ResetColor()
             }
 
+            Function Select-AzVMSize {
+                [CmdletBinding()]
+                Param(
+                    [String]$ResourceGroupName,
+                    [Parameter(ParameterSetName="AVSet",Position=0)]
+                    [String]$AvailabilitySetName,
+                    [Parameter(ParameterSetName="Location",Position=0)]
+                    [String]$Location
+                )
 
+                # Getting possible sizes from Availability Set
+                If ($AvailabilitySetName) {$ResizeOptions = Get-AzVMSize -ResourceGroupName $ResourceGroupName -AvailabilitySetName $AvailabilitySetName}
+                ElseIf ($Location) {$ResizeOptions = Get-AzVMSize -ResourceGroupName $ResourceGroupName -AvailabilitySetName $AvailabilitySetName}
+                Else {Return}
+                $ResizeFamilies = $ResizeOptions.Name.Substring(9,1) | Select-Object -Unique | Sort-Object
 
+                Write-Verbose ("Found {0} Virtual Machine Series and {1} total size options" -f $ResizeFamilies.Count,$ResizeOptions.count)
+                # Building prompts for VM Resizing
+                $ResizeMsgBanner = ("`n`r Azure VM Size Information: https://docs.microsoft.com/en-us/azure/virtual-machines/windows/sizes `n`r")
+                $Range = 0..($ResizeFamilies.Count -1)
+                For ($i = 0; $i -lt $ResizeFamilies.Count; $i++) {$ResizeMsgBanner += " [$i] $($ResizeFamilies[$i]) Series`n"}
+                $ResizeMsgBanner += "`n Please select a Virtual Machine Family - 99 to Cancel"
+
+                # Prompt for VM Family
+                Do {$FamilyChoice = Show-Menu -Title "Select a Virtual Machine Family" -Menu $ResizeMsgBanner -Style Info -Color Yellow}
+                Until (($Range -contains $FamilyChoice) -OR ($FamilyChoice -eq "99"))
+
+                If ($FamilyChoice -eq "99") {Return}
+
+                # Prompt for VM Size
+                $SelectionCount = 0
+                Do {
+                    $VMSize = ($ResizeOptions.Where{$_.Name -like "Standard_$($ResizeFamilies[$FamilyChoice])*"} | Sort-Object NumberOfCores,MemoryInMB | Out-GridView -PassThru).Name
+
+                    If ([System.String]::IsNullOrEmpty($VMSize)) {
+                        $SelectionCount++
+                        Write-Warning "Invalid or No Virtual Machine Size selected!"
+                        If ($SelectionCount -ge 2) {
+                            Write-Warning ("No Virtual Machine Size selection was made!" -f $VMObject.GetType().Name)
+                            $PSCmdlet.ThrowTerminatingError(
+                                [System.Management.Automation.ErrorRecord]::New(
+                                    [System.SystemException]::New("Invalid Virtual Machine Size Selection"),
+                                    "InvalidSelection",
+                                    [System.Management.Automation.ErrorCategory]::InvalidResult,
+                                    "NoSelectionFound"
+                                )
+                            )
+                            Return
+                        }
+                        Else {Start-Sleep -Milliseconds 2500}
+                    }
+                }
+                Until ($ResizeOptions.Name -contains $VMSize)
+                Return $VMSize
+            }
         }
         catch {$PSCmdlet.ThrowTerminatingError($PSItem)}
     }
@@ -205,7 +267,11 @@ Function New-AzVMClone {
             }
             Else {Write-Verbose ("Virtual Machine object type verified ({0})" -f $VMObject.GetType().Name)}
             
-            $CurrentAvailabilitySetName = ($VMObject.AvailabilitySetReference.Id -Split "/")[-1]
+            If ([System.String]::IsNullOrEmpty($VMObject.AvailabilitySetReference.Id)) {
+                $CurrentAvailabilitySetName = "Standalone VM"
+            }
+            Else {$CurrentAvailabilitySetName = ($VMObject.AvailabilitySetReference.Id -Split "/")[-1]}
+
             # Simple hashtable to show which components have been cloned
             $ConfigStatus = [Ordered]@{
                 VMName = $VMObject.Name
@@ -216,6 +282,7 @@ Function New-AzVMClone {
                 OSDisk = $false
                 DataDisks = $false
                 Network = $false
+                Plan = $false
                 BootDiagnostics = $false
                 Extensions = $false
             }
@@ -227,7 +294,13 @@ Function New-AzVMClone {
                 # Continuation prompt asking to clone the configuration for the VM
                 If ($Force -or $PSCmdlet.ShouldProcess("$($VMObject.Name)","Virtual Machine migration to new Availability Set")) {
                     # Create Base VM Configuration object
-                    $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false
+                    If ($Resize) {
+                        # Create new VM Object with new size
+                        $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -AvailabilitySetName $AvailabilitySet.Name
+                        Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                        $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false
+                    }
+                    Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false}
                 }
                 Else {Return}
             }
@@ -240,8 +313,17 @@ Function New-AzVMClone {
                 }
                 Else {
                     Show-Menu -Title ("{0} is associated with {1} Availability Set and will be removed" -f $VMObject.Name,($VMObject.AvailabilitySetReference.Id -Split "/")[-1]) -DisplayOnly -Style Info -Color Cyan
-                    #Create Base VM Configuration object
-                    $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false
+                    If ($Force -or $PSCmdlet.ShouldProcess("$($VMObject.Name)","Virtual Machine removal from Availability Set [$CurrentAvailabilitySetName]")) {
+                        If ($Resize) {
+                            # Getting possible sizes from Location
+                            $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -Location $VMObject.Location    
+                            # Create new VM Object with new size
+                            Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -Tags $VMObject.Tags -Debug:$false
+                        }
+                        Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false}
+                    }
+                    Else {Return}
                 }
             }
             # If no other conditions exist, the VM(s) are cloned 'AS-IS'
@@ -250,16 +332,27 @@ Function New-AzVMClone {
                     Show-Menu -Title ("{0} is NOT part of an Availability Set" -f $VMObject.Name) -DisplayOnly -Style Info -Color Yellow
                     # Continuation prompt asking to remove the AVSet from the configuration for the VM
                     If ($Force -or $PSCmdlet.ShouldProcess("$($VMObject.Name)","Clone the Virtual Machine 'AS IS'")) {
-                        # Create Base VM Configuration object
-                        $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false
+                        If ($Resize) {
+                            # Getting possible sizes from Location
+                            $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -Location $VMObject.Location    
+                            # Create new VM Object with new size
+                            Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -Tags $VMObject.Tags -Debug:$false
+                        }
+                        Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -Tags $VMObject.Tags -Debug:$false}
                     }
                     Else {Return}
                 }
                 Else {
                     Show-Menu -Title ("{0} IS associated with {1} Availability Set (NO CHANGE)" -f $VMObject.Name,($VMObject.AvailabilitySetReference.Id -Split "/")[-1]) -DisplayOnly -Style Info -Color Magenta
                     If ($Force -or $PSCmdlet.ShouldProcess("$($VMObject.Name)","Clone the Virtual Machine 'AS IS'")) {
-                        # Create Base VM Configuration object
-                        $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $VMObject.AvailabilitySetReference.Id -Tags $VMObject.Tags -Debug:$false
+                        If ($Resize) {
+                            # Create new VM Object with new size
+                            $VMSize = Select-AzVMSize -ResourceGroupName $VMObject.ResourceGroupName -AvailabilitySetName $AvailabilitySet.Name
+                            Write-Host ("`n`r [{0}] Virtual Machine will be resized from {1} to {2} during the cloning operation! `n`r" -f $VMObject.Name,$VMObject.HardwareProfile.VmSize,$VMSize) -ForegroundColor Black -BackgroundColor Green
+                            $newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMSize -AvailabilitySetId $AvailabilitySet.Id -Tags $VMObject.Tags -Debug:$false
+                        }
+                        Else {$newVMConfig = New-AzVMConfig -VMName $VMObject.Name -VMSize $VMObject.HardwareProfile.VmSize -AvailabilitySetId $VMObject.AvailabilitySetReference.Id -Tags $VMObject.Tags -Debug:$false}
                     }
                     Else {Return}
                 }
@@ -303,6 +396,12 @@ Function New-AzVMClone {
                 }
             }
 
+            # Add vm plan information
+            If ($VMObject.Plan) {
+                Set-AzVMPlan -VM $newVMConfig -Name $VMObject.Plan.Name -Product $VMObject.Plan.Product -PromotionCode $VMObject.Plan.PromotionCode -Publisher $VMObject.Plan.Publisher
+                $ConfigStatus.Plan = $true
+            }
+
             # Add boot diagnostics
             If ($VMObject.DiagnosticsProfile.BootDiagnostics.Enabled -eq $true) {
                 $StorageAccount = ($VMObject.DiagnosticsProfile.BootDiagnostics.StorageUri.Split("."))[0].SubString(8)
@@ -336,6 +435,8 @@ Extensions:        $($ConfigStatus.Extensions)
             
             # Continuation prompt asking DELETE and RE-CREATE the VM(s) using the cloned configuration
             If ($PSCmdlet.ShouldProcess($VMObject.Name,"Clone Virtual Machine")) {
+                Write-Verbose ("Converting VMObject to JSON for reference and backup (in the current directory)")
+                $VMObject | ConvertTo-Json | Out-File ("{0}_AzVMClone_{1}.json" -f $VMObject.Name,(Get-Date -Format yyyyMMdd))
                 Write-Host ("`n`r[{0}] Removing the Virtual Machine (long running operation)" -f $VMObject.Name) -NoNewline -ForegroundColor Magenta
                 # VM removal in a background job - monitored for completion and received for status
                 $jobRemove = Remove-AzVM -ResourceGroupName $VMObject.ResourceGroupName -Name $VMObject.Name -Force -AsJob
